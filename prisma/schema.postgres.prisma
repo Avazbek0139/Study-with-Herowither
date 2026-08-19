@@ -139,3 +139,19 @@ model UserSettings {
 
   @@map("user_settings")
 }
+
+model Feedback {
+  id          String   @id @default(cuid())
+  userId      String?
+  type        String   @default("suggestion")
+  subject     String
+  message     String
+  contactInfo String?
+  userEmail   String?
+  userName    String?
+  status      String   @default("pending")
+  sentToTg    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("feedbacks")
+}
