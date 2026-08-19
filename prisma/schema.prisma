@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatar       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vocabulary         Vocabulary[]
+  vocabularyProgress VocabularyProgress[]
+  tests              Test[]
+  reviewItems        ReviewItem[]
+  settings           UserSettings?
+
+  @@map("users")
+}
+
+model Vocabulary {
+  id              String   @id @default(cuid())
+  userId          String
+  word            String
+  translation     String?
+  partOfSpeech    String?
+  pronunciation   String?
+  exampleSentence String?
+  synonyms        String?
+  antonyms        String?
+  personalNote    String?
+  difficultyLevel String   @default("normal")
+  isLearned       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress VocabularyProgress?
+  reviews  ReviewItem[]
+
+  @@unique([userId, word])
+  @@index([userId])
+  @@map("vocabulary")
+}
+
+model VocabularyProgress {
+  id              String    @id @default(cuid())
+  vocabularyId    String    @unique
+  userId          String
+  correctCount    Int       @default(0)
+  wrongCount      Int       @default(0)
+  accuracy        Float     @default(0)
+  attempts        Int       @default(0)
+  lastReviewed    DateTime?
+  confidenceScore Float     @default(0)
+  nextReviewDate  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  vocabulary Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nextReviewDate])
+  @@map("vocabulary_progress")
+}
+
+model Test {
+  id             String   @id @default(cuid())
+  userId         String
+  totalQuestions Int
+  correctAnswers Int      @default(0)
+  accuracy       Float    @default(0)
+  timeTaken      Int?
+  difficulty     String   @default("normal")
+  questionTypes  String   @default("mixed")
+  status         String   @default("in_progress")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions TestQuestion[]
+
+  @@index([userId])
+  @@map("tests")
+}
+
+model TestQuestion {
+  id            String   @id @default(cuid())
+  testId        String
+  type          String
+  questionData  String
+  correctAnswer String
+  userAnswer    String?
+  isCorrect     Boolean?
+  blockNumber   Int
+  orderInBlock  Int
+  explanation   String?
+  createdAt     DateTime @default(now())
+
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([testId])
+  @@map("test_questions")
+}
+
+model ReviewItem {
+  id           String   @id @default(cuid())
+  userId       String
+  vocabularyId String
+  reason       String
+  priority     Int      @default(1)
+  resolved     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocabulary Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, resolved])
+  @@map("review_items")
+}
+
+model UserSettings {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  preferredDifficulty String  @default("normal")
+  dailyGoal           Int     @default(10)
+  translationLanguage String  @default("uz")
+  aiApiKey            String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  userId      String?
+  type        String   @default("suggestion")
+  subject     String
+  message     String
+  contactInfo String?
+  userEmail   String?
+  userName    String?
+  status      String   @default("pending")
+  sentToTg    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("feedbacks")
+}
