@@ -30,8 +30,8 @@ export async function GET(req: Request) {
       where: {
         userId: user.id,
         OR: [
-          { word: { contains: query, mode: 'insensitive' } },
-          { translation: { contains: query, mode: 'insensitive' } },
+          { word: { contains: query } },
+          { translation: { contains: query } },
         ]
       },
       include: {
