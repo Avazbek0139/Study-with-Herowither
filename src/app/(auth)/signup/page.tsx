@@ -19,12 +19,26 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (password !== confirmPassword) {
+    const cleanName = name.trim()
+    const cleanEmail = email.trim()
+    const cleanPassword = password.trim()
+
+    if (!cleanName || cleanName.length < 2) {
+      setError('Name must be at least 2 characters')
+      return
+    }
+
+    if (!cleanEmail) {
+      setError('Please enter a valid email address')
+      return
+    }
+
+    if (cleanPassword !== confirmPassword.trim()) {
       setError('Passwords do not match')
       return
     }
     
-    if (password.length < 8) {
+    if (cleanPassword.length < 8) {
       setError('Password must be at least 8 characters')
       return
     }
@@ -36,7 +50,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name: cleanName, email: cleanEmail, password: cleanPassword }),
       })
 
       const data = await res.json()
@@ -47,16 +61,17 @@ export default function SignupPage() {
         return
       }
 
-      // Auto sign in
+      // Auto sign in with verified credentials
       const signInRes = await signIn('credentials', {
-        email,
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
         redirect: false,
       })
 
       if (signInRes?.error) {
-        setError('Account created but failed to sign in')
+        setError('Account created! Please sign in using your email and password.')
         setIsLoading(false)
+        router.push('/login')
       } else {
         router.push('/')
         router.refresh()
@@ -81,14 +96,14 @@ export default function SignupPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm text-center">
+          <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm text-center font-medium">
             {error}
           </div>
         )}
 
         <div>
           <label className="block text-sm font-medium text-dark-300 mb-1.5" htmlFor="name">
-            Name
+            Full Name
           </label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
@@ -107,7 +122,7 @@ export default function SignupPage() {
 
         <div>
           <label className="block text-sm font-medium text-dark-300 mb-1.5" htmlFor="email">
-            Email
+            Email Address
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />

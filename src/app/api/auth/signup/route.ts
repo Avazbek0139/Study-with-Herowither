@@ -13,34 +13,44 @@ const signupSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const result = signupSchema.safeParse(body)
+    const result = signupSchema.safeParse({
+      name: typeof body.name === 'string' ? body.name.trim() : body.name,
+      email: typeof body.email === 'string' ? body.email.trim().toLowerCase() : body.email,
+      password: typeof body.password === 'string' ? body.password.trim() : body.password,
+    })
 
     if (!result.success) {
+      const firstError = result.error.errors[0]?.message || 'Validation failed'
       return NextResponse.json(
-        { message: 'Validation failed', errors: result.error.errors },
+        { message: firstError, errors: result.error.errors },
         { status: 400 }
       )
     }
 
     const { name, email, password } = result.data
-    const normalizedEmail = email.toLowerCase()
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedName = name.trim()
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+        ],
+      },
     })
 
     if (existingUser) {
       return NextResponse.json(
-        { message: 'Email already exists' },
+        { message: 'An account with this email already exists' },
         { status: 409 }
       )
     }
 
-    const passwordHash = await hash(password, 12)
+    const passwordHash = await hash(password.trim(), 12)
 
     const user = await prisma.user.create({
       data: {
-        name,
+        name: normalizedName,
         email: normalizedEmail,
         passwordHash,
         settings: {
@@ -67,9 +77,8 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json(
-      { message: 'An error occurred during signup' },
+      { message: 'An error occurred during signup. Please try again.' },
       { status: 500 }
     )
   }
 }
-

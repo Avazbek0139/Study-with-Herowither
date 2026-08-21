@@ -2,13 +2,16 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Loader2, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const from = searchParams.get('from') || '/'
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -19,21 +22,53 @@ export default function LoginPage() {
     setIsLoading(true)
     setError('')
 
+    const cleanEmail = email.trim()
+    const cleanPassword = password.trim()
+
+    if (!cleanEmail) {
+      setError('Please enter your email or username')
+      setIsLoading(false)
+      return
+    }
+
+    if (!cleanPassword) {
+      setError('Please enter your password')
+      setIsLoading(false)
+      return
+    }
+
     try {
+      // 1. Diagnostic pre-verification to return exact, clear error messages
+      const verifyRes = await fetch('/api/auth/verify-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+      })
+
+      const verifyData = await verifyRes.json()
+
+      if (!verifyRes.ok) {
+        setError(verifyData.message || 'Invalid email or password')
+        setIsLoading(false)
+        return
+      }
+
+      // 2. Perform NextAuth session sign-in
       const res = await signIn('credentials', {
-        email: email.trim(),
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
         redirect: false,
       })
 
       if (res?.error) {
-        setError('Invalid email or password')
+        setError('Authentication session failed. Please try again.')
       } else {
-        router.push('/')
+        router.push(from)
         router.refresh()
       }
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      console.error('Login submit error:', err)
+      setError('An unexpected network error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -53,25 +88,25 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm text-center">
+          <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm text-center font-medium">
             {error}
           </div>
         )}
 
         <div>
           <label className="block text-sm font-medium text-dark-300 mb-1.5" htmlFor="email">
-            Email
+            Email or Username
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-500" />
             <input
               id="email"
-              type="email"
+              type="text"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-dark-900 border border-dark-700 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder:text-dark-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-colors"
-              placeholder="you@example.com"
+              placeholder="you@example.com or Username"
             />
           </div>
         </div>
