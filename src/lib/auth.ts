@@ -31,18 +31,26 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password are required')
+          throw new Error('Email/Username and password are required')
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase() },
+        const input = credentials.email.trim().toLowerCase()
+        const rawPassword = credentials.password.trim()
+
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: input },
+              { name: credentials.email.trim() },
+            ],
+          },
         })
 
         if (!user) {
-          throw new Error('No account found with this email')
+          throw new Error('No account found with this email or username')
         }
 
-        const isPasswordValid = await compare(credentials.password, user.passwordHash)
+        const isPasswordValid = await compare(rawPassword, user.passwordHash)
 
         if (!isPasswordValid) {
           throw new Error('Invalid password')
